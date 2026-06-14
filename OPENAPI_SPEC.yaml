@@ -1,0 +1,671 @@
+openapi: 3.0.0
+info:
+  title: ConstructionTech Platform API
+  description: |
+    Enterprise Construction Management Platform with AI-Powered Tools
+    
+    This API provides access to 30+ AI-powered construction tools, project management,
+    safety intelligence, and financial tracking capabilities.
+  version: 1.0.0
+  contact:
+    name: ConstructionTech Support
+    email: api-support@constructiontech.ai
+    url: https://constructiontech.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  x-logo:
+    url: https://constructiontech.ai/logo.png
+    altText: ConstructionTech Logo
+
+servers:
+  - url: https://api.constructiontech.ai/v1
+    description: Production API
+    variables:
+      version:
+        default: v1
+  - url: https://staging-api.constructiontech.ai/v1
+    description: Staging API
+  - url: http://localhost:4943
+    description: Local development (dfx)
+
+tags:
+  - name: Authentication
+    description: Authentication and authorization
+  - name: Tools
+    description: AI-powered construction tools
+  - name: Projects
+    description: Project management
+  - name: Safety
+    description: Safety intelligence
+  - name: Financial
+    description: Financial intelligence
+  - name: Design
+    description: Design intelligence
+
+paths:
+  /auth/token:
+    post:
+      tags:
+        - Authentication
+      summary: Get API access token
+      description: Obtain a JWT token for API authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - api_key
+              properties:
+                api_key:
+                  type: string
+                  description: Your API key
+                expires_in:
+                  type: integer
+                  default: 3600
+                  description: Token expiration in seconds
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+
+  /tools/cost-estimator:
+    post:
+      tags:
+        - Tools
+      summary: Estimate project cost
+      description: |
+        ML-based cost estimation using project scope, location, complexity, and historical data.
+        Provides confidence levels and cost breakdowns.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CostEstimatorRequest'
+      responses:
+        '200':
+          description: Cost estimate calculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostEstimatorResult'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+
+  /tools/material-takeoff:
+    post:
+      tags:
+        - Tools
+      summary: Generate material takeoff
+      description: |
+        BIM-integrated material quantification from IFC models.
+        Returns quantities, CSI codes, and vendor recommendations.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialTakeoffRequest'
+      responses:
+        '200':
+          description: Material takeoff generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialTakeoffResult'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '413':
+          $ref: '#/components/responses/FileTooLargeError'
+
+  /tools/schedule-calculator:
+    post:
+      tags:
+        - Tools
+      summary: Calculate project schedule
+      description: |
+        CPM scheduling engine with constraint analysis.
+        Identifies critical path, float, and schedule risks.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleCalculatorRequest'
+      responses:
+        '200':
+          description: Schedule calculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleCalculatorResult'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+
+  /tools/safety-score:
+    post:
+      tags:
+        - Tools
+      summary: Calculate safety score
+      description: |
+        Real-time safety KPI scoring based on incidents, near-misses,
+        and safety metrics for a project or period.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SafetyScoreRequest'
+      responses:
+        '200':
+          description: Safety score calculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafetyScoreResult'
+
+  /tools/change-order:
+    post:
+      tags:
+        - Tools
+      summary: Analyze change order impact
+      description: |
+        Evaluate cost and schedule impact of proposed changes.
+        Identifies risks and provides recommendations.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeOrderRequest'
+      responses:
+        '200':
+          description: Change order impact analyzed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeOrderResult'
+
+  /projects:
+    get:
+      tags:
+        - Projects
+      summary: List projects
+      description: Get list of accessible projects
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+          description: Filter by tenant ID
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, archived, completed]
+          description: Filter by project status
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Project list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+  /projects/{projectId}:
+    get:
+      tags:
+        - Projects
+      summary: Get project details
+      description: Retrieve detailed information for a specific project
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project ID
+      responses:
+        '200':
+          description: Project details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /auth/token
+
+  schemas:
+    AuthToken:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+        token_type:
+          type: string
+          example: ******
+          type: integer
+          description: Token expiration in seconds
+        scope:
+          type: string
+          description: Token scope
+
+    CostEstimatorRequest:
+      type: object
+      required:
+        - projectId
+        - scope
+        - locationZip
+      properties:
+        projectId:
+          type: string
+          description: Project identifier
+        scope:
+          type: string
+          description: Description of work scope
+        locationZip:
+          type: string
+          description: Project location ZIP code
+        squareFootage:
+          type: number
+          description: Total square footage
+        complexity:
+          type: string
+          enum: [low, medium, high]
+          default: medium
+        timeline:
+          type: string
+          description: Project timeline
+        finishQuality:
+          type: string
+          enum: [basic, standard, premium]
+          default: standard
+
+    CostEstimatorResult:
+      type: object
+      properties:
+        toolId:
+          type: string
+        projectId:
+          type: string
+        status:
+          type: string
+        result:
+          type: object
+          properties:
+            estimatedCost:
+              type: number
+              description: Total estimated cost
+            estimatedCents:
+              type: integer
+              description: Cost in cents
+            confidence:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: Confidence level (0-1)
+            breakdown:
+              type: object
+              properties:
+                labor:
+                  type: number
+                materials:
+                  type: number
+                equipment:
+                  type: number
+                overhead:
+                  type: number
+            factors:
+              type: array
+              items:
+                type: string
+              description: Applied adjustment factors
+        metadata:
+          type: object
+          properties:
+            executionTime:
+              type: integer
+              description: Execution time in milliseconds
+            model:
+              type: string
+              description: AI model used
+            version:
+              type: string
+        timestamp:
+          type: integer
+          description: Unix timestamp
+        cplAudit:
+          type: string
+          description: CPL governance audit hash
+
+    MaterialTakeoffRequest:
+      type: object
+      required:
+        - projectId
+      properties:
+        projectId:
+          type: string
+        ifcModel:
+          type: string
+          format: binary
+          description: IFC BIM model file
+        specItems:
+          type: array
+          items:
+            type: object
+          description: Specification items to quantify
+        format:
+          type: string
+          enum: [list, summary, detailed]
+          default: summary
+
+    MaterialTakeoffResult:
+      type: object
+      properties:
+        materials:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              quantity:
+                type: number
+              unit:
+                type: string
+              csiCode:
+                type: string
+              cost:
+                type: number
+        totalQuantities:
+          type: object
+        summary:
+          type: string
+
+    ScheduleCalculatorRequest:
+      type: object
+      required:
+        - projectId
+        - activities
+      properties:
+        projectId:
+          type: string
+        activities:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              description:
+                type: string
+              duration:
+                type: integer
+                description: Duration in days
+        constraints:
+          type: array
+          items:
+            type: object
+            description: Sequence dependencies
+        startDate:
+          type: string
+          format: date
+
+    ScheduleCalculatorResult:
+      type: object
+      properties:
+        criticalPath:
+          type: array
+          items:
+            type: object
+            properties:
+              activityId:
+                type: string
+              description:
+                type: string
+              duration:
+                type: integer
+        projectDuration:
+          type: integer
+          description: Total days
+        risks:
+          type: array
+          items:
+            type: object
+
+    SafetyScoreRequest:
+      type: object
+      required:
+        - projectId
+      properties:
+        projectId:
+          type: string
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        includeNearMisses:
+          type: boolean
+          default: true
+
+    SafetyScoreResult:
+      type: object
+      properties:
+        safetyScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        riskLevel:
+          type: string
+          enum: [low, medium, high, critical]
+        trend:
+          type: array
+          items:
+            type: number
+        recommendations:
+          type: array
+          items:
+            type: string
+
+    ChangeOrderRequest:
+      type: object
+      required:
+        - projectId
+        - changeItems
+      properties:
+        projectId:
+          type: string
+        changeItems:
+          type: array
+          items:
+            type: object
+        originalScope:
+          type: object
+        newScope:
+          type: object
+
+    ChangeOrderResult:
+      type: object
+      properties:
+        costImpact:
+          type: number
+        scheduleImpact:
+          type: integer
+        riskFlags:
+          type: array
+          items:
+            type: string
+        recommendation:
+          type: string
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, archived, completed]
+        owner:
+          type: string
+        contractAmount:
+          type: number
+        startDate:
+          type: string
+          format: date
+        completionDate:
+          type: string
+          format: date
+        location:
+          type: object
+          properties:
+            address:
+              type: string
+            zip:
+              type: string
+            coordinates:
+              type: object
+              properties:
+                latitude:
+                  type: number
+                longitude:
+                  type: number
+        team:
+          type: array
+          items:
+            type: object
+        budget:
+          type: object
+          properties:
+            total:
+              type: number
+            spent:
+              type: number
+            remaining:
+              type: number
+
+  responses:
+    BadRequestError:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    UnauthorizedError:
+      description: Unauthorized - invalid or missing credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    RateLimitError:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+
+    FileTooLargeError:
+      description: File too large
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Error:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+        timestamp:
+          type: integer
+
+x-generator: "ConstructionTech API Documentation Generator"
